@@ -16,3 +16,8 @@ Problem Statement:
  (user1, user3) will be added to the graph
  9. loop ends when the unExploredQueue is empty
  9. find the eigenvalue vector of the created user connected graph using python networkx library
+
+python networkx library:
+
+eigenvector_centrality:
+Uses the power method to find the eigenvector for the largest eigenvalue of the adjacency matrix of G.
