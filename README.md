@@ -1,4 +1,4 @@
-EigenVectorCentrility
+EigenVectorCentrality
 =====================
 Problem Statement:
  Finding the important actors in the github using the eigenvector centrality.
