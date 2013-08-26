@@ -17,7 +17,14 @@ Problem Statement:
  9. loop ends when the unExploredQueue is empty
  9. find the eigenvalue vector of the created user connected graph using python networkx library
 
-python networkx library:
+Eigenvector centrality is a measure of the influence of a node in a network. It assigns relative scores to all nodes in the network based on the concept that connections to high-scoring nodes contribute more to the score of the node in question than equal connections to low-scoring nodes. Google's PageRank is a variant of the Eigenvector centrality measure.
 
+Eigenvector centrality is calculated by assessing how well connected an individual is to the parts of the network with the greatest connectivity.  Individuals with high eigenvector scores have many connections, and their connections have many connections, and their connections have many connections … out to the end of the network.
+
+Applications:
+High eigenvector centrality individuals are leaders of the network.  They are often public figures with many connections to other high-profile individuals.  Thus, they often play roles of key opinion leaders and shape public perception.  A related example of this is Google’s page rank algorithm, which is closely related to eigenvector centrality calculated on websites based on links to them
+
+
+python networkx library:
 eigenvector_centrality:
 Uses the power method to find the eigenvector for the largest eigenvalue of the adjacency matrix of G.
