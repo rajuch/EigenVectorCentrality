@@ -18,13 +18,21 @@ Problem Statement:
  9. find the eigenvalue vector of the created user connected graph using python networkx library
 
 Procedure for creating user connected graph for single cluster
+
 Take the cluster of similar repositories (read from file), find the owners of it and add to the userSet
+
    For every user,
+   
 	add the user to  unExploredqueue
+	
 	until unExploredqueue is empty
+	
 		find the users followed by the user, add to the followingList
+		
 		add these users to the unExploredqueue
+		
 		check the other users in the userSet are present in the followingList
+		
 		if present then add the outgoing edge to the graph(user, otheruser)
 
 One important feature of networks is the relative centrality of individuals in them. Centrality is a structural characteristic of individuals in the network, meaning a centrality score tells you something about how that individual fits within the network overall. Individuals with high centrality scores are often more likely to be leaders, key conduits of information, and be more likely to be early adopters of anything that spreads in a network.
