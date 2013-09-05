@@ -44,10 +44,10 @@ def getFollowers(user):
     sql = 'select actor from FollowEvents where followedUser_login="'+user+'"';
     #print sql
     res = executeSQL(conn,sql)
-    followersList = []
+    followersSet = Set()
     for row in res:
-        followersList.append(row[0])
-    return followersList
+        followersSet.add(row[0])
+    return followersSet
     
 
 def getFollowing(user):
@@ -59,10 +59,10 @@ def getFollowing(user):
     sql = 'select followedUser_login from FollowEvents where actor="'+user+'"';
     #print sql
     res = executeSQL(conn,sql)
-    followingList = []
+    followingSet = Set()
     for row in res:
-        followingList.append(row[0])
-    return followingList
+        followingSet.add(row[0])
+    return followingSet
 
 def addIncomingEdges(user, followersList, userConnectedGraph):
     """
@@ -117,7 +117,7 @@ def createUserConnectedWholeGraph(userConnectedGraph,unExploredUserQueue, Explor
         if user not in ExploredUserMap:
             ExploredUserMap[user] = 1
         
-            followersList = getFollowers(user, conn)
+            followersList = getFollowers(user)
             followingUsersList = getFollowing(user)
         
             userConnectedGraph.add_nodes_from(followersList)
@@ -172,7 +172,7 @@ def plotgraph(conn, filePath, fileName):
                 user = vals[0]
                 userList.append(user)
                 centralityValList.append(vals[1])
-                sql = 'select count(*) from FollowEvents where actor="' + user + '"'
+                sql = 'select count(*) from FollowEvents where followedUser_login="' + user + '"'
             
                 res = executeSQL(conn, sql)
                 for row in res:
@@ -259,7 +259,7 @@ def calculateDegreeCentrality(userConnectedGraph, counter):
     parameters:
     userConnectedGraph - graph
     counter - int value for maintaining unique file names """
-    degreeCentrality = nx.out_degree_centrality(userConnectedGraph)
+    degreeCentrality = nx.in_degree_centrality(userConnectedGraph)
     writeCentralityOutput(degreeCentrality, path + 'degreeCentrality' + str(counter))
     plotgraph(conn, path, 'degreeCentrality' + str(counter))
     
@@ -271,50 +271,49 @@ def calculateClosenessCentrality(userConnectedGraph, counter):
     closenessCentrality = nx.closeness_centrality(userConnectedGraph, distance='weight')
     writeCentralityOutput(closenessCentrality, path + 'closenessCentrality' + str(counter))
     plotgraph(conn, path, 'closenessCentrality' + str(counter))
- 
-def createUserConnectedGraph(user1,userConnectedGraph,usersSet):
+
+def graphProperties(userConnectedGraph, counter):
+    f = open(path+'GraphProperties/graph'+str(counter), 'w')
+    isConnected = nx.is_connected(userConnectedGraph)
+    f.write('isConnected:: '+ str(isConnected))
+    f.write('\n')
+    connectedComponentList = nx.connected_components(userConnectedGraph)
+    for component in connectedComponentList:
+        connectedComponent = ''
+        for node in component:
+            if connectedComponent == '':
+                connectedComponent = node
+            else:
+                connectedComponent = connectedComponent +','+ node
+        f.write(connectedComponent)
+        f.write('\n')
+    f.flush()
+    f.close()
+    
+
+def createUserConnectedGraph(usersSet):
     """
     creates the user connected graph, for an user it finds the following users and add the the outgoing edges to the graph
     parameters:
-    user1 - user
-    userConnectedGraph - graph
-    usersSet - set of users
+    userSet - set of users
+    returns list of userconnected directed graph, undirected graph
     """
-    unExploredUserQueue = Queue() #queue for maintaining the unexplored users
-    ExploredUserMap = {} #map for maintaining the explored users
-    unExploredUserQueue.put(user1)
-    addedUserCount=0
-    userSetSize = len(usersSet) -1
-    edgeWeight = 1
-    addedUserMap = {}
-    while unExploredUserQueue.empty() == False and addedUserCount < userSetSize:
-        user = unExploredUserQueue.get()
-        #nullss is a marker to identify the levels
-        if user == 'nullss':
-            edgeWeight += 1
-        #edgeWeight < 100 check upto 100 levels
-        if user != 'nullss' and user not in ExploredUserMap and user not in addedUserMap and edgeWeight < 100:
-            ExploredUserMap[user] = 1
-        
-            followingMap = getFollowing(user)
-            
-            for otherUser in usersSet:
-                if user1 != otherUser:
-                    if otherUser in followingMap:
-                        if otherUser in addedUserMap:
-                            pass
-                        else:
-                            addedUserMap[otherUser] = 1
-                            addedUserCount += 1
-                            userConnectedGraph.add_edge(user1,otherUser,weight = edgeWeight)
-                            #print 'found'
-                            pass
-                
-            for followUser in followingMap:
-                unExploredUserQueue.put(followUser)
-            unExploredUserQueue.put('nullss')
-            #print 'queueSize::', unExploredUserQueue.qsize()
-            
+    userConnectedDiGraph = nx.DiGraph()
+    userConnectedUnDiGraph = nx.Graph()
+    userMap = {}
+    graphList = []
+    for user in usersSet:
+        userMap[user] = 1
+    for user in usersSet:
+        followingSet=getFollowing(user)
+        for followingUser in followingSet:
+            if followingUser in userMap:
+                userConnectedUnDiGraph.add_edge(user, followingUser)
+                userConnectedDiGraph.add_edge(user, followingUser)
+    graphList.append(userConnectedDiGraph)
+    graphList.append(userConnectedUnDiGraph)            
+    return graphList
+    
 def start(repos, counter):
     """
     creates the user connected graph with the given repository owners as nodes
@@ -323,20 +322,28 @@ def start(repos, counter):
     counter - int value
     """
     usersSet = getUsers(repos)
-    print len(usersSet)
-    userConnectedGraph = nx.DiGraph()
+    clusterUserSet = Set()
+    clusterUserSet = clusterUserSet | usersSet
+    for user in usersSet:
+        followerSet=getFollowers(user)
+        clusterUserSet = clusterUserSet | followerSet
+        
+    print len(clusterUserSet)
     try:
-        for user in usersSet:
-            createUserConnectedGraph(user,userConnectedGraph,usersSet)
-            
-        calculateEigenCentrality(userConnectedGraph, counter)
-        calculateDegreeCentrality(userConnectedGraph, counter)
-        calculateClosenessCentrality(userConnectedGraph, counter)
+        graphList = createUserConnectedGraph(clusterUserSet)
+        userConnectedDiGraph = graphList[0]
+        userConnectedUnDiGraph = graphList[1]
+        
+        graphProperties(userConnectedUnDiGraph, counter)
+        
+        calculateEigenCentrality(userConnectedDiGraph, counter)
+        calculateDegreeCentrality(userConnectedDiGraph, counter)
+        calculateClosenessCentrality(userConnectedDiGraph, counter)
     except Exception as e:
         try:
-            calculateEigenCentrality(userConnectedGraph, counter)
-            calculateDegreeCentrality(userConnectedGraph, counter)
-            calculateClosenessCentrality(userConnectedGraph, counter)    
+            calculateEigenCentrality(userConnectedDiGraph, counter)
+            calculateDegreeCentrality(userConnectedDiGraph, counter)
+            calculateClosenessCentrality(userConnectedDiGraph, counter)    
         except Exception as e:
             print e
             pass
@@ -372,41 +379,16 @@ def startForCreatingWholeGraph(repos, counter):
         plotgraphForCentralities(path, filesList)
     except Exception as e:
         print e
-    
-   
-    
-    #calculate the eigen vector centrality for userconnected graph
-    
-    
-    #calculate the betweeness centrality for userconnected graph
-#     try:
-#         betweenessCentrality = nx.betweenness_centrality(userConnectedGraph)
-#         writeCentralityOutput(betweenessCentrality,path+'betweenessCentrality'+str(counter))
-#         plotgraph(conn, path, 'betweenessCentrality'+str(counter))
-#     except Exception as e:
-#         print e
-
-    #t3=time()
-#     print 'between centrality completed===>',(t3-t2)
-#     try:
-#         closenessCentrality = nx.closeness_centrality(userConnectedGraph)
-#         writeCentralityOutput(closenessCentrality,path+'closenessCentrality'+str(counter))
-#         plotgraph(conn, path, 'closenessCentrality'+str(counter))
-#     except Exception as e:
-#         print e
-
-    # nx.draw(userConnectedGraph)
-    # plt.savefig("/home/raju/Work/centrality/userConnectedGraph.png")
-            
+      
 try:
     conn = mdb.connect(host = "localhost", user = "root", passwd = "root", db = "github")
     conn1 = mdb.connect(host = "localhost", user = "root", passwd = "root", db = "github_cluster")
-    path = '/home/raju/Work/cluster_1000/'
-    f = open('/home/raju/Work/part1_cluster_1000','r')
+    path = '/home/raju/Work/Cluster/WholeCentrality/'
+    f = open('/home/raju/Work/Cluster/clusterOutput100_lang5','r')
     counter = 1
     for line in f:
         line = line.replace('\n','')
-        start(line, counter)
+        startForCreatingWholeGraph(line, counter)
         counter += 1
 except Exception as e:
     raise e            
