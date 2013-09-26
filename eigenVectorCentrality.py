@@ -123,8 +123,8 @@ def createUserConnectedWholeGraph(userConnectedGraph,unExploredUserQueue, Explor
             userConnectedGraph.add_nodes_from(followersList)
             userConnectedGraph.add_nodes_from(followingUsersList)
         
-            addIncomingEdges(user,followersList, userConnectedGraph)
-            addOutGoingEdges(user, followingUsersList, userConnectedGraph)
+            addOutGoingEdges(user,followersList, userConnectedGraph)
+            addIncomingEdges(user, followingUsersList, userConnectedGraph)
             print len(followersList), len(followingUsersList)
             for followUser in followersList:
                 unExploredUserQueue.put(followUser)
@@ -232,8 +232,6 @@ def plotgraphForCentralities(filePath, filesList):
         
     p1 ,= plt.plot(centralityList[0], followersList[0], marker = 'o')
     p2 ,= plt.plot(centralityList[1], followersList[1],marker = 'o')
-    #p3,=plt.plot(centralityList[2], followersList[2],marker='o')
-    #plt.legend([p3, p2, p1], ["closeness","Degree", "Eigenvector"])
     plt.legend([p2, p1], ["Degree", "Eigenvector"])
     
     plt.xlabel('centralityValue', fontsize = 10)
@@ -254,12 +252,23 @@ def calculateEigenCentrality(userConnectedGraph, counter):
     writeCentralityOutput(eigenCentrality, path + 'eigenCentrality' + str(counter))
     plotgraph(conn, path, 'eigenCentrality' + str(counter))
 
+def calculateEigenCentrality_numpy(userConnectedGraph, counter):
+    """
+    calculates the eigenVector Centrality for given graph and writes the output to file
+    parameters:
+    userConnectedGraph - graph
+    counter - int value for maintaining unique file names
+    """
+    eigenCentrality = nx.eigenvector_centrality_numpy(userConnectedGraph)
+    writeCentralityOutput(eigenCentrality, path + 'eigenCentrality' + str(counter))
+    plotgraph(conn, path, 'eigenCentrality' + str(counter))
+
 def calculateDegreeCentrality(userConnectedGraph, counter):
     """ calculates the degree Centrality for given graph and writes the output to file
     parameters:
     userConnectedGraph - graph
     counter - int value for maintaining unique file names """
-    degreeCentrality = nx.in_degree_centrality(userConnectedGraph)
+    degreeCentrality = nx.out_degree_centrality(userConnectedGraph)
     writeCentralityOutput(degreeCentrality, path + 'degreeCentrality' + str(counter))
     plotgraph(conn, path, 'degreeCentrality' + str(counter))
     
@@ -341,7 +350,7 @@ def start(repos, counter):
         calculateClosenessCentrality(userConnectedDiGraph, counter)
     except Exception as e:
         try:
-            calculateEigenCentrality(userConnectedDiGraph, counter)
+            calculateEigenCentrality_numpy(userConnectedDiGraph, counter)
             calculateDegreeCentrality(userConnectedDiGraph, counter)
             calculateClosenessCentrality(userConnectedDiGraph, counter)    
         except Exception as e:
@@ -362,6 +371,7 @@ def startForCreatingWholeGraph(repos, counter):
     print len(usersSet)
     
     userConnectedGraph = nx.DiGraph()
+    #userConnectedGraph = nx.Graph()
     try:
     #add the users to the unExploredQueue
         for user in usersSet:
@@ -371,25 +381,27 @@ def startForCreatingWholeGraph(repos, counter):
         calculateEigenCentrality(userConnectedGraph, counter)
         calculateDegreeCentrality(userConnectedGraph, counter)
         #calculateClosenessCentrality(userConnectedGraph, counter)
-        
+          
         filesList = []
         filesList.append('eigenCentrality' + str(counter))
         filesList.append('degreeCentrality' + str(counter))
-    #filesList.append('closenessCentrality'+str(counter))
+        #filesList.append('closenessCentrality'+str(counter))
         plotgraphForCentralities(path, filesList)
     except Exception as e:
         print e
       
-try:
-    conn = mdb.connect(host = "localhost", user = "root", passwd = "root", db = "github")
-    conn1 = mdb.connect(host = "localhost", user = "root", passwd = "root", db = "github_cluster")
-    path = '/home/raju/Work/Cluster/WholeCentrality/'
-    f = open('/home/raju/Work/Cluster/clusterOutput100_lang5','r')
-    counter = 1
-    for line in f:
-        line = line.replace('\n','')
-        startForCreatingWholeGraph(line, counter)
-        counter += 1
-except Exception as e:
-    raise e            
+if __name__ == '__main__':
+    try:
+        conn = mdb.connect(host = "localhost", user = "root", passwd = "root", db = "github")
+        conn1 = mdb.connect(host = "localhost", user = "root", passwd = "root", db = "github_cluster")
+        path = '/home/raju/Work/centrality/final/'
+        f = open('/home/raju/Work/Cluster/cluster.txt','r')
+        counter = 1
+        for line in f:
+            line = line.replace('\n','')
+            if counter < 2:
+                startForCreatingWholeGraph(line, counter)
+                counter += 1 
+    except Exception as e:
+        raise e            
             
